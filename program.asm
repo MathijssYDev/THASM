@@ -1,32 +1,16 @@
-byte $x = 15
-byte $y = 0b110
-
 global start
+
+loadsize 30
+stack 0
+
+pointer @Num1 = 2343
+pointer @Num2 = 532
+
+
 function start
-    lda.ram > $y // Direct Start value assign (LDA, 10)
-    lda.ram > 0xF0
-
-    lda.boot * $y // Static Pointer to address. (LDA, 00,01)
-
-    //* Static Pointer
-
-        lda * $y
-
-        'LDA' -> Function
-        '*' -> Pointer Indentivation
-        '$y' -> Pointer Address ( Must be reference to variable or address by "0xFFFF")
-    *//
-
-    lda.boot *(M,L) $y // Editable Pointer to address.
-
-    //* Dynamic Pointer
-
-        lda *(M,L) $y
-
-        'LDA' -> Function
-        '*' -> Pointer Indentivation
-        'M' -> Most significant byte variable name
-        'L' -> Least significant byte variable name
-        '$y' -> Default pointer ( Must be reference to variable or address by "0xFFFF")
-    *//
+    lda.boot > @Num1.LOW
+    add.ram > @Num2.LOW
+    lda.boot > @Num1.HIGH
+    adc.ram > @Num2.HIGH
+    sta.ram * 0x00ff
 end
