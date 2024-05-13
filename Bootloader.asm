@@ -1,4 +1,5 @@
 global setup
+size 255
 stack 0
 
 byte *0 $StartAddressRAM_HIGH = 0x0
@@ -7,8 +8,11 @@ byte *0 $StartAddressRAM_LOW = 0x0
 byte *0 $StartAddressROM_HIGH = 0x0
 byte *0 $StartAddressROM_LOW = 0x0
 
-byte *0 $EndAddressROM_HIGH = 0x0
-byte *0 $EndAddressROM_LOW = 0xff // 1 higher than is copied
+byte *0x7ffe $EndAddressROM_HIGH = 0x0
+byte *0x7fff $EndAddressROM_LOW = 0xff // 1 higher than is copied
+
+pointer @ROM_ProgramSize_HIGH = 0x0004
+pointer @ROM_ProgramSize_LOW = 0x0005
 
 pointer @LoadAddressCommand = 0x7ff0
 pointer @LoadAddressHIGH = 0x7ff1
@@ -26,18 +30,15 @@ pointer @LoadStore = @LoadAddressCommand
 pointer @CNULocation = @SetAddressLOW
 
 function loop
-    // ############## INCREMENT ##############
+    // ############## COPY VALUE ON ADDRESS FROM ROM TO RAM ##############
+
+    jmp * @LoadStore
+    $LoadStoreReturn
 
     // ############## Increment ROM address LOW ##############
     lda.boot * @LoadAddressLOW
     inc
     sta.boot * @LoadAddressLOW
-
-    // ############## Check if end is reached ##############
-    cmp.ram > $EndAddressROM_LOW
-    jme * overflowLow
-
-    $overflowLowReturn
 
     // ############## Increment ROM address HIGH ##############
     lda.boot * @LoadAddressHIGH
@@ -53,20 +54,23 @@ function loop
     adc.ram > 0
     sta.boot * @SetAddressHIGH
 
-    // ############## COPY VALUE ON ADDRESS FROM ROM TO RAM ##############
-
-    jmp * @LoadStore
-    $LoadStoreReturn
+    // ############## Check if end is reached ##############
+    lda.boot * @LoadAddressLOW
+    sta.ram * 0x00ff
+    cmp.ram * $EndAddressROM_LOW
+    jme * overflowLow
 
     jmp * loop
 end
 
 function overflowLow
+    lda.ram > 0xAA
+    sta.ram * 0x00ff
     lda.boot * @LoadAddressHIGH
-    cmp.ram > $EndAddressROM_HIGH
+    cmp.ram * $EndAddressROM_HIGH
     jmp * done
 
-    jmp * $LoadStoreReturn
+    jmp * loop
 end
 
 function done
@@ -80,8 +84,15 @@ function done
     jmp * @CNULocation
 end
 
-
 function setup
+    // ############## LOAD SIZE ##############
+
+    lda.rom * @ROM_ProgramSize_LOW
+    sta.boot * $EndAddressROM_LOW
+
+    lda.rom * @ROM_ProgramSize_HIGH
+    sta.boot * $EndAddressROM_HIGH
+
     // ############## LOAD INCREMENTING FUNCTION ##############
 
     // LOAD from ROM

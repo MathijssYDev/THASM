@@ -1,15 +1,22 @@
 package src;
-import java.io.BufferedReader;
-import java.io.FileReader;
+import javax.swing.*;
+import java.io.*;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryUsage;
 import java.util.*;
-import java.io.FileWriter;
 import java.util.stream.Collectors;
 
 public class THASMCompiler {
+    public THASMCompiler(String[] args, JTextArea textArea) {
+        Compiler compiler = new Compiler(args,textArea);
+        MemoryUsage heapMemoryUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+        long usedMB = heapMemoryUsage.getUsed()/(1024*1024);
+//        System.out.println("Used Memory: " + usedMB + "MB");
+    }
+
     public static void main(String[] args) {
-        Compiler compiler = new Compiler(args);
+        JTextArea textArea = new JTextArea();
+        Compiler compiler = new Compiler(args,textArea);
         MemoryUsage heapMemoryUsage = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
         long usedMB = heapMemoryUsage.getUsed()/(1024*1024);
         System.out.println("Used Memory: " + usedMB + "MB");
@@ -17,9 +24,9 @@ public class THASMCompiler {
 }
 class Compiler {
     public HashMap<String, String[]> Functionality = new HashMap<String, String[]>();
-    public final int MinProgramAddresses = 1;
+    public final int MinProgramAddresses = 0;
     public final int MaxProgramAddresses = 32768;
-    public final int ReservedSpotsFront = 3;
+    public final int ReservedSpotsFront = 5;
     public int amountOfOverriddenVariableAdrresses = 0;
     public HashMap<String, Object[]> Variables = new HashMap<String, Object[]>();
     public ArrayList<String> VariablesOrder = new ArrayList<>();
@@ -28,11 +35,15 @@ class Compiler {
     public HashMap<String, Object[]> Pointers = new HashMap<String, Object[]>();
     public String globalReference = "";
     public int globalLine = 0;
+    public int size = 0;
     public int currentAddress = 0;
     public byte[] PROGRAM = new byte[MaxProgramAddresses];
     public int stack = 0;
+    JTextArea textArea;
 
-    public Compiler(String[] args) {
+    public Compiler(String[] args, JTextArea textArea) {
+        this.textArea = textArea;
+
         Functionality.put("lda.ram",new String[]{"0x26","0x36","AV","A"});
         Functionality.put("lda.rom",new String[]{"0xA6","0xB6","AV","A"});
         Functionality.put("lda.boot",new String[]{"0x66","0x76","AV","A"});
@@ -97,6 +108,7 @@ class Compiler {
     }
     public void parse1(FileReader fileReader) throws Exception {
         System.out.println("(THASM) first parse starting...");
+        textArea.append("(THASM) first parse starting...\n");
         BufferedReader bufferedReader = new BufferedReader(fileReader);
         String line;
         ArrayList<String> linearguments = new ArrayList<>();
@@ -199,6 +211,9 @@ class Compiler {
                 if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " global takes only 1 argument: function");
                 globalReference = linearguments.get(1);
                 globalLine = linecount;
+            } else if (Objects.equals(linearguments.get(0).toLowerCase(), "size")) {
+                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " size takes only 1 argument: size (16bit)");
+                size = Integer.parseInt(linearguments.get(1));
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "stack")) {
                 if (linearguments.size() != 2)
                     throw new Exception(parse1ErrorDefault(linecount, line) + " stack takes only 1 argument: size (decimal)");
@@ -278,10 +293,12 @@ class Compiler {
             }
         }
         System.out.println("(THASM) first parse successful!");
+        textArea.append("(THASM) first parse successful!\n");
         bufferedReader.close();
     }
     public void parse2() throws Exception {
         System.out.println("(THASM) second parse starting...");
+        textArea.append("(THASM) second parse starting...\n");
         PROGRAM[MinProgramAddresses+currentAddress+ReservedSpotsFront] = (byte) stack;
         currentAddress++;
 
@@ -508,14 +525,25 @@ class Compiler {
         String portionHIGH = hex.substring(0,2);
         String portionLOW = hex.substring(2);
 
+        String hexSize = String.format("%04x", size);
+
+        String portionHIGHSize = hexSize.substring(0,2);
+        String portionLOWSize = hexSize.substring(2);
+
         PROGRAM[0] = 7;
         PROGRAM[1] = (byte)Integer.parseUnsignedInt(portionHIGH,16);
         PROGRAM[2] = (byte)Integer.parseUnsignedInt(portionLOW,16);
+        PROGRAM[3] = (byte)Integer.parseUnsignedInt(portionHIGHSize,16);
+        PROGRAM[4] = (byte)Integer.parseUnsignedInt(portionLOWSize,16);
         System.out.println("(THASM) second parse successful!");
+        textArea.append("(THASM) second parse successful...\n");
         System.out.println();
+        textArea.append("\n");
         System.err.println("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes");
+        textArea.append("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes\n");
+
     }
-    public void finalizeCompile(String filelocation) throws Exception {
+    public JTextArea finalizeCompile(String filelocation) throws Exception {
         try {
             FileWriter myWriter = new FileWriter(filelocation);
             int prevRow = 0;
@@ -534,9 +562,11 @@ class Compiler {
 
             myWriter.close();
             System.out.println("(THASM) Succesfully wrote the program to: " + filelocation);
+            textArea.append("(THASM) Succesfully wrote the program to: " + filelocation+"\n");
         } catch (Exception e) {
             System.out.println("An error occurred");
             e.printStackTrace();
         }
+        return textArea;
     }
 }
