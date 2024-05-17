@@ -56,7 +56,6 @@ function loop
 
     // ############## Check if end is reached ##############
     lda.boot * @LoadAddressLOW
-    sta.ram * 0x00ff
     cmp.ram * $EndAddressROM_LOW
     jme * overflowLow
 
@@ -64,8 +63,7 @@ function loop
 end
 
 function overflowLow
-    lda.ram > 0xAA
-    sta.ram * 0x00ff
+
     lda.boot * @LoadAddressHIGH
     cmp.ram * $EndAddressROM_HIGH
     jmp * done

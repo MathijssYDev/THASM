@@ -53,7 +53,7 @@ class Compiler {
 
         Functionality.put("nop",new String[]{"0x00","0x00"});
         Functionality.put("cnu",new String[]{"0x10","0x10"});
-        Functionality.put("brk",new String[]{"0x10","0x10"});
+        Functionality.put("brk",new String[]{"0x20","0x20"});
 
         Functionality.put("inc",new String[]{"0x01","0x01"});
         Functionality.put("dec",new String[]{"0x11","0x11"});
@@ -317,6 +317,7 @@ class Compiler {
 
             PROGRAM[Address] = ((Integer) (value[1])).byteValue();
         }
+
         int AddressT = MinProgramAddresses+currentAddress+ReservedSpotsFront;
         for(String key : FunctionsOrder) {
             Object[] value = Functions.get(key);
@@ -325,13 +326,13 @@ class Compiler {
             ArrayList<String> Lines = (ArrayList<String>) (value)[1];
 
             for(String Line : Lines) {
-                if (!Arrays.stream(Line.split(" ")).filter(list -> !list.isEmpty() && list.startsWith("$")).collect(Collectors.toCollection(ArrayList::new)).isEmpty()) continue;
+                if (Arrays.stream(Line.split(" ")).filter(list -> !list.isEmpty()).collect(Collectors.toCollection(ArrayList::new)).getFirst().startsWith("$")) continue;
                 if (!Line.contains("byte")&&!Line.contains("=")) {
                     if (Line.contains("*")) {
                         AddressT+=3;
                     } else if (Line.contains(">")) {
                         AddressT+=2;
-                    } else{
+                    } else {
                         AddressT++;
                     }
                 }
@@ -358,7 +359,10 @@ class Compiler {
         int Address = MinProgramAddresses+currentAddress+ReservedSpotsFront;
         for(String key : FunctionsOrder) {
             Object[] value = Functions.get(key);
+//            System.err.println(key + " 1 : " + value[0]);
+//            System.err.println(key + " 2 : " + Address);
             value[0] = Address;
+
             Functions.put(key, value);
             ArrayList<String> Lines = (ArrayList<String>) (value)[1];
             int lineCount = (int) (value)[0];
@@ -367,6 +371,9 @@ class Compiler {
             boolean nextIsSection = false;
 
             for(String Line : Lines) {
+                if (Objects.equals(key, "loop")) {
+                    System.out.println(MinProgramAddresses+currentAddress+ReservedSpotsFront);
+                }
 
                 String[] line = Arrays.stream(Line.split(" ")).filter(s -> !s.isEmpty()).toArray(String[]::new); // Removes spaces and tabs before the code, as well as splits the line into small parts
                 String[] Function = Functionality.get(line[0]);
@@ -479,6 +486,7 @@ class Compiler {
                         if (Functions.get(line[2]) != null) v = (int) Functions.get(line[2])[0];
                         else if (Variables.get(line[2]) != null) v = (int) Variables.get(line[2])[0];
                         else v = (int) Pointers.get(line[2])[0];
+
                     }
                     MSBValue = Integer.parseInt((String.format("%04X",v).substring(0,2)),16);
                     LSBValue = Integer.parseInt((String.format("%04X",v).substring(2)),16);
@@ -533,12 +541,13 @@ class Compiler {
         PROGRAM[0] = 7;
         PROGRAM[1] = (byte)Integer.parseUnsignedInt(portionHIGH,16);
         PROGRAM[2] = (byte)Integer.parseUnsignedInt(portionLOW,16);
-        PROGRAM[3] = (byte)Integer.parseUnsignedInt(portionHIGHSize,16);
-        PROGRAM[4] = (byte)Integer.parseUnsignedInt(portionLOWSize,16);
+        PROGRAM[4] = (byte)Integer.parseUnsignedInt(portionHIGHSize,16);
+        PROGRAM[5] = (byte)Integer.parseUnsignedInt(portionLOWSize,16);
         System.out.println("(THASM) second parse successful!");
         textArea.append("(THASM) second parse successful...\n");
         System.out.println();
         textArea.append("\n");
+        System.out.println(ReservedSpotsFront);
         System.err.println("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes");
         textArea.append("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes\n");
 
