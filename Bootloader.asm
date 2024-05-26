@@ -88,6 +88,9 @@ function setup
     lda.rom * @ROM_ProgramSize_LOW
     sta.boot * $EndAddressROM_LOW
 
+    sta.ram * 1
+
+
     lda.rom * @ROM_ProgramSize_HIGH
     sta.boot * $EndAddressROM_HIGH
 

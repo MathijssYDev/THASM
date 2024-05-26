@@ -1,52 +1,73 @@
 global loop
 
-size 75
+size 120
 stack 0
 
-byte $currNum = 0
-byte $prevNum = 1
-byte $temp = 0
+byte $index = 0
+byte $size = 255
+byte $changeCount = 0
+byte $nextNumber = 0
+byte $currNumber = 0
 
-byte $depth_HIGH = 5
-byte $depth_LOW = 0
-
-pointer @LocationStart = 0x0100
+pointer @StartPosition_Ordered = 0x0100
+pointer @StartPosition_Ordered_add1 = 0x0101
 
 function loop
-    sta.ram *($Location_HIGH,$Location_LOW) @LocationStart
+    lda.ram *($currNumberHIGH,$currNumberLOW) @StartPosition_Ordered
+    sta.ram * $currNumber
 
-    lda.ram * $Location_LOW
+    sta.ram * 0x00fe
 
-    cmp.ram * $depth_LOW
-    jme * check
-    $returncheck
+    lda.ram *($nextNumberHIGH,$nextNumberLOW) @StartPosition_Ordered
+    sta.ram * $nextNumber
+
+    sta.ram * 0x00ff
+
+    cmp.ram * $currNumber
+    jmo * Swap
+    $Swap_Return
+
+
+    // Increment Index
+    lda.ram * $index
     inc
+    sta.ram * $currNumberLOW
+    sta.ram * $index
+    inc
+    sta.ram * $nextNumberLOW
 
-    sta.ram * $Location_LOW
-
-    lda.ram * $Location_HIGH
-    adc.ram > 0
-    sta.ram * $Location_HIGH
-
-
-    lda.ram * $currNum
-    add.ram * $prevNum
-    sta.ram * $temp
-
-    lda.ram * $prevNum
-    sta.ram * $currNum
-
-    lda.ram * $temp
-    sta.ram * $prevNum
-
+    lda.ram * $index
+    cmp.ram > $size
+    jme * check
     jmp * loop
 end
 function check
-    lda.ram * $Location_HIGH
-    cmp.ram * $depth_HIGH
+    lda.ram * $changeCount
+    cmp.ram > 0
     jme * done
-    jmp * $returncheck
+    jmp * loop
 end
 function done
     brk
+end
+function Swap
+    lda.ram * $changeCount
+    inc
+    sta.ram * $changeCount
+
+    lda.ram * $currNumber
+    sta.ram *($nextNumberHIGH2,$nextNumberLOW2) @StartPosition_make aOrdered_add1
+
+    lda.ram * $nextNumberLOW2
+    inc
+    sta.ram * $nextNumberLOW2
+
+    lda.ram * $nextNumber
+    sta.ram *($currNumberHIGH2,$currNumberLOW2) @StartPosition_Ordered
+
+    lda.ram * $currNumberLOW2
+    inc
+    sta.ram * $currNumberLOW2
+
+    jmp * $Swap_Return
 end

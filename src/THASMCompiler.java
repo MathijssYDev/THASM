@@ -39,6 +39,7 @@ class Compiler {
     public int currentAddress = 0;
     public byte[] PROGRAM = new byte[MaxProgramAddresses];
     public int stack = 0;
+    public String TemplateFile;
     JTextArea textArea;
 
     public Compiler(String[] args, JTextArea textArea) {
@@ -85,10 +86,13 @@ class Compiler {
         Functionality.put("jmc",new String[]{"0x47","0x47","A"});
         Functionality.put("jmo",new String[]{"0x67","0x67","A"});
 
-        if (args.length != 2) {
-            System.err.println("Missing argument: file location, output location");
+        if (args.length != 2 && args.length != 3) {
+            System.err.println("Missing argument: file location, output location, (Template File)");
             return;
         }
+
+        if (args.length == 3) TemplateFile = args[2];
+
         try {
             FileReader fileReader = new FileReader(args[0]);
 
@@ -371,9 +375,6 @@ class Compiler {
             boolean nextIsSection = false;
 
             for(String Line : Lines) {
-                if (Objects.equals(key, "loop")) {
-                    System.out.println(MinProgramAddresses+currentAddress+ReservedSpotsFront);
-                }
 
                 String[] line = Arrays.stream(Line.split(" ")).filter(s -> !s.isEmpty()).toArray(String[]::new); // Removes spaces and tabs before the code, as well as splits the line into small parts
                 String[] Function = Functionality.get(line[0]);
@@ -553,6 +554,7 @@ class Compiler {
 
     }
     public JTextArea finalizeCompile(String filelocation) throws Exception {
+
         try {
             FileWriter myWriter = new FileWriter(filelocation);
             int prevRow = 0;
