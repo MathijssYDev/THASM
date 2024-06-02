@@ -212,12 +212,17 @@ class Compiler {
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "#")) {
                 if (!insideFunction) throw new Exception(parse1ErrorDefault(linecount,line) + " Can't add custom hex code outside of a function!");
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "global")) {
-                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " global takes only 1 argument: function");
+                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " global directive takes only 1 argument: function");
                 globalReference = linearguments.get(1);
                 globalLine = linecount;
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "size")) {
-                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " size takes only 1 argument: size (16bit)");
-                size = Integer.parseInt(linearguments.get(1));
+                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " size directive takes only 1 argument: size (16bit)");
+                try {
+                    size = Integer.parseInt(linearguments.get(1));
+                } catch (NumberFormatException e) {
+                    throw new Exception(parse1ErrorDefault(linecount,line) + " invalid input for size directive: " + linearguments.get(1));
+                }
+                if (size > MaxProgramAddresses) throw new Exception(parse1ErrorDefault(linecount,line) + " invalid input for size directive, maximum size = " + MaxProgramAddresses + ", input size = " + size);
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "stack")) {
                 if (linearguments.size() != 2)
                     throw new Exception(parse1ErrorDefault(linecount, line) + " stack takes only 1 argument: size (decimal)");
@@ -303,6 +308,24 @@ class Compiler {
     public void parse2() throws Exception {
         System.out.println("(THASM) second parse starting...");
         textArea.append("(THASM) second parse starting...\n");
+
+        if (TemplateFile!=null) {
+            int row = 0;
+            File myFile = new File(TemplateFile);
+            Scanner myReader = new Scanner(myFile);
+            while (myReader.hasNextLine()) {
+                String line = myReader.nextLine();
+                int columb = 0;
+                for(String hexString : line.split("\t")) {
+                    int value = Integer.parseInt(hexString.substring(2),16);
+                    PROGRAM[(columb+row*16)] = (byte)value;
+                    columb++;
+                }
+                row++;
+            }
+            myReader.close();
+        }
+
         PROGRAM[MinProgramAddresses+currentAddress+ReservedSpotsFront] = (byte) stack;
         currentAddress++;
 
@@ -363,8 +386,7 @@ class Compiler {
         int Address = MinProgramAddresses+currentAddress+ReservedSpotsFront;
         for(String key : FunctionsOrder) {
             Object[] value = Functions.get(key);
-//            System.err.println(key + " 1 : " + value[0]);
-//            System.err.println(key + " 2 : " + Address);
+
             value[0] = Address;
 
             Functions.put(key, value);
@@ -394,7 +416,7 @@ class Compiler {
 
                 if (nextIsSection) {
                     nextIsSection = false;
-                    Object[] x = Variables.get(sectionName);
+                    Object[] x = new Object[2];
                     x[0] = MinProgramAddresses+currentAddress+ReservedSpotsFront;
                     Variables.put(sectionName,x);
                 }
@@ -548,13 +570,12 @@ class Compiler {
         textArea.append("(THASM) second parse successful...\n");
         System.out.println();
         textArea.append("\n");
-        System.out.println(ReservedSpotsFront);
         System.err.println("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes");
         textArea.append("(THASM) Compiled to " + (MinProgramAddresses+currentAddress+ReservedSpotsFront) + " bytes\n");
 
     }
     public JTextArea finalizeCompile(String filelocation) throws Exception {
-
+//        int LoadBytes = TemplateFile==null?MaxProgramAddresses:MinProgramAddresses+currentAddress+ReservedSpotsFront;
         try {
             FileWriter myWriter = new FileWriter(filelocation);
             int prevRow = 0;

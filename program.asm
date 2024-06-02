@@ -1,73 +1,93 @@
-global loop
+global setup
 
-size 120
+size 200
 stack 0
 
-byte $index = 0
-byte $size = 255
-byte $changeCount = 0
-byte $nextNumber = 0
-byte $currNumber = 0
+pointer @MusicInfoStartingAddress = 261 // 256 + 5
+pointer @MusicInfoStartingAddressValue = 262 // 256 + 1 + 5
 
-pointer @StartPosition_Ordered = 0x0100
-pointer @StartPosition_Ordered_add1 = 0x0101
+pointer @Inactive = 0x8080
+pointer @Write = 0x8280
+pointer @Latch = 0x8380
 
+function setup
+    jmp * loop
+end
 function loop
-    lda.ram *($currNumberHIGH,$currNumberLOW) @StartPosition_Ordered
-    sta.ram * $currNumber
+    lda.rom *($HIGHAddr_Register,$LOWAddr_Register) @MusicInfoStartingAddress // Register
+    cmp.ram > 0x0E
+    jme * incrment
+    $returnA
+    cmp.ram > 16
+    jme * delay
 
-    sta.ram * 0x00fe
+    sta.ram * @Latch
+    //sta.ram * @Inactive
+    lda.rom *($HIGHAddr_Value,$LOWAddr_Value) @MusicInfoStartingAddressValue // Value
+    sta.ram * @Write
+    //sta.ram * @Inactive
 
-    lda.ram *($nextNumberHIGH,$nextNumberLOW) @StartPosition_Ordered
-    sta.ram * $nextNumber
+    $AfterDelay
 
-    sta.ram * 0x00ff
+    lda.ram * $LOWAddr_Value
+    add.ram > 2
+    sta.ram * $LOWAddr_Value
+    lda.ram * $HIGHAddr_Value
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Value
 
-    cmp.ram * $currNumber
-    jmo * Swap
-    $Swap_Return
+    lda.ram * $LOWAddr_Register
+    add.ram > 2
+    sta.ram * $LOWAddr_Register
+    lda.ram * $HIGHAddr_Register
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Register
 
-
-    // Increment Index
-    lda.ram * $index
-    inc
-    sta.ram * $currNumberLOW
-    sta.ram * $index
-    inc
-    sta.ram * $nextNumberLOW
-
-    lda.ram * $index
-    cmp.ram > $size
-    jme * check
     jmp * loop
 end
-function check
-    lda.ram * $changeCount
+function incrment
+    lda.ram * $LOWAddr_Value
+    add.ram > 1
+    sta.ram * $LOWAddr_Value
+    lda.ram * $HIGHAddr_Value
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Value
+    
+    lda.ram * $LOWAddr_Register
+    add.ram > 1
+    sta.ram * $LOWAddr_Register
+    lda.ram * $HIGHAddr_Register
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Register
+    jmp * $returnA
+end
+byte $delayCountdown = 0
+function delay
+
+    lda.rom *($HIGHAddr_Register,$LOWAddr_Register) @MusicInfoStartingAddress
+
+    lda.ram * $LOWAddr_Value
+    add.ram > 2
+    sta.ram * $LOWAddr_Value
+    lda.ram * $HIGHAddr_Value
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Value
+
+    lda.ram * $LOWAddr_Register
+    add.ram > 2
+    sta.ram * $LOWAddr_Register
+    lda.ram * $HIGHAddr_Register
+    adc.ram > 0
+    sta.ram * $HIGHAddr_Register
+    sta.ram * $delayCountdown
+
+    $delayRound
+    lda.ram * $delayCountdown
+    dec
+    sta.ram * $delayCountdown
+
     cmp.ram > 0
-    jme * done
-    jmp * loop
-end
-function done
-    brk
-end
-function Swap
-    lda.ram * $changeCount
-    inc
-    sta.ram * $changeCount
+    jme * $AfterDelay
 
-    lda.ram * $currNumber
-    sta.ram *($nextNumberHIGH2,$nextNumberLOW2) @StartPosition_make aOrdered_add1
-
-    lda.ram * $nextNumberLOW2
-    inc
-    sta.ram * $nextNumberLOW2
-
-    lda.ram * $nextNumber
-    sta.ram *($currNumberHIGH2,$currNumberLOW2) @StartPosition_Ordered
-
-    lda.ram * $currNumberLOW2
-    inc
-    sta.ram * $currNumberLOW2
-
-    jmp * $Swap_Return
+    jmp * $delayRound
 end

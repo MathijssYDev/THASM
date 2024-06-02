@@ -29,8 +29,13 @@ public class FileToROM {
             int byteTracker = StartByte;
 
             while (dis.available() > 0) {
-                PROGRAM[byteTracker] = dis.readByte();
-                byteTracker++;
+                try {
+                    PROGRAM[byteTracker] = dis.readByte();
+                    byteTracker++;
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    System.err.println("Error occurred during reading of input file: File is to large. Skipping the rest! \n (The data in the output file will still be valid, but will not contain the full file)");
+                    break;
+                }
             }
 
             FileSize = byteTracker;
@@ -45,6 +50,7 @@ public class FileToROM {
                 if (prevRow != Row) {
                     myWriter.write( line + "\n");
 //                    myWriter.write("0x"+String.format("%04X", Address-16).toUpperCase().substring(0, 3)+"0\t" + line + "\n");
+//                    System.out.println(line);
                     line = new StringBuilder();
                 }
                 line.append("0x"+String.format("%02X",PROGRAM[Address]& 0xFF)).append("\t");
