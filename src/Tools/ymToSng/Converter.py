@@ -106,6 +106,8 @@ def processYMFile(inputFilename, outputFilename):
 
             totalSize = 0
             changes = 0
+            previousNeededDelay = 0;
+
             nonChangeFrames = 0
             for i in range(frameCount):
                 nextHasChange = False
@@ -118,7 +120,7 @@ def processYMFile(inputFilename, outputFilename):
                     if i == 0 or lastRegisterBytes[j] != registerBytes[j]:  # removed ( or j == 13 )
 
                         # The value 255 for register 13 in a YM file is to be ignored
-                        if (j != 13 or registerBytes[j] != 255) and (j == 0 or j == 1 or j == 7 or j == 8):
+                        if (j != 13 or registerBytes[j] != 255): #and (j == 0 or j == 1 or j == 7 or j == 8)
                             anyChange = True
                             # Write register value
 
@@ -133,17 +135,23 @@ def processYMFile(inputFilename, outputFilename):
                             nextHasChange = True
 
                 # Write wait instruction
-                if not anyChange and not nextHasChange:
-                    nonChangeFrames = nonChangeFrames + 1
-
-                if nonChangeFrames >= 17 or nonChangeFrames > 1 and nextHasChange:
-                    outputFile.write(bytes([16, nonChangeFrames*14]))
-                    nonChangeFrames = 0
-                    totalSize = totalSize + 2
-                elif anyChange:
-                    outputFile.write(bytes([16, 14 - changes]))
-                    totalSize = totalSize + 2
-                    changes = 0
+                previousNeededDelay = 14-changes
+                outputFile.write(bytes([16, 14 - changes]))
+                totalSize = totalSize + 2
+                changes = 0
+                # if not anyChange and not nextHasChange:
+                #     nonChangeFrames = nonChangeFrames + 1
+                #
+                # if nonChangeFrames >= 17 or (nextHasChange and previousNeededDelay > 0):
+                #     outputFile.write(bytes([16,(nonChangeFrames*14+previousNeededDelay)&0xff]))
+                #     previousNeededDelay = 0
+                #     nonChangeFrames = 0
+                #     totalSize = totalSize + 2
+                # elif anyChange:
+                #     previousNeededDelay = 14-changes
+                #     outputFile.write(bytes([16, 14 - changes]))
+                #     totalSize = totalSize + 2
+                #     changes = 0
 
             print("Total size:", totalSize)
 

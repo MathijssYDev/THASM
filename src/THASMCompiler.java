@@ -33,6 +33,7 @@ class Compiler {
     public HashMap<String, Object[]> Functions = new HashMap<String, Object[]>();
     public ArrayList<String> FunctionsOrder = new ArrayList<>();
     public HashMap<String, Object[]> Pointers = new HashMap<String, Object[]>();
+    public HashMap<String, Integer> NonExistantNames = new HashMap<String, Integer>();
     public String globalReference = "";
     public int globalLine = 0;
     public int size = 0;
@@ -504,12 +505,15 @@ class Compiler {
                         if (line[2].startsWith("0b")) radix = 2;
                         v = Integer.parseInt(radix != 10?line[2].substring(2):line[2], radix);
                     } catch (Exception e) {
-                        if (Variables.get(line[2]) == null && Functions.get(line[2]) == null && Pointers.get(line[2]) == null) throw new Exception(parse2ErrorDefault(lineCount, String.join(" ", line)) + " Referenced variable, function or pointer doesn't exist! : " + line[2]);
-
-                        if (Functions.get(line[2]) != null) v = (int) Functions.get(line[2])[0];
-                        else if (Variables.get(line[2]) != null) v = (int) Variables.get(line[2])[0];
-                        else v = (int) Pointers.get(line[2])[0];
-
+                        //if (Variables.get(line[2]) == null && Functions.get(line[2]) == null && Pointers.get(line[2]) == null) throw new Exception(parse2ErrorDefault(lineCount, String.join(" ", line)) + " Referenced variable, function or pointer doesn't exist! : " + line[2]);
+                        if (Variables.get(line[2]) == null && Functions.get(line[2]) == null && Pointers.get(line[2]) == null) {
+                            v = 0;
+                            NonExistantNames.put(line[2],currentAddress);
+                        } else {
+                            if (Functions.get(line[2]) != null) v = (int) Functions.get(line[2])[0];
+                            else if (Variables.get(line[2]) != null) v = (int) Variables.get(line[2])[0];
+                            else v = (int) Pointers.get(line[2])[0];
+                        }
                     }
                     MSBValue = Integer.parseInt((String.format("%04X",v).substring(0,2)),16);
                     LSBValue = Integer.parseInt((String.format("%04X",v).substring(2)),16);
@@ -523,7 +527,20 @@ class Compiler {
                         String[] arguments = line[1].substring(1).replace("(","").replace(")","").split(",");
 
                         if (arguments.length != 2) throw new Exception(parse2ErrorDefault(lineCount, String.join(" ", line)) + " 2 Arguments must be given! *(@M,@L). Arguments provided: " + arguments.length);
+                        
+                        int addr = -1;
+                        if (NonExistantNames.containsKey(arguments[0])) addr = NonExistantNames.get(arguments[0]);
+                        if (NonExistantNames.containsKey(arguments[1])) addr = NonExistantNames.get(arguments[1]);
+                        if (addr != -1) {
+                            int MSBValue2 = Integer.parseInt((String.format("%04X",MinProgramAddresses+currentAddress+ReservedSpotsFront).substring(0,2)),16);
+                            int LSBValue2 = Integer.parseInt((String.format("%04X",MinProgramAddresses+currentAddress+ReservedSpotsFront+1).substring(2)),16);
 
+                            addr++;
+                            PROGRAM[MinProgramAddresses+addr+ReservedSpotsFront] = (byte) MSBValue2;
+                            addr++;
+                            PROGRAM[MinProgramAddresses+addr+ReservedSpotsFront] = (byte) LSBValue2;
+                        }
+                        
                         Object[] MSB = new Object[2];
                         Object[] LSB = new Object[2];
                         LSB[1] = MSBValue;

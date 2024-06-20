@@ -113,7 +113,7 @@ public class YM6Converter {
         return frames;
     }
     public static void main(String args[]) throws Exception {
-        File ymFile = new File("Examples/YM/YM_006A.BIN");
+        File ymFile = new File("Examples/Music/YM_006A.BIN");
         YM6Converter ym = new YM6Converter(ymFile);
 
         System.out.println("Compiling: " + ym.getSongName() + " by " + ym.getAuthorName());

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
-    <file url="file://$PROJECT_DIR$/Examples/YM/YM_006A.BIN" charset="US-ASCII" />
-    <file url="file://$PROJECT_DIR$/Examples/ymConverter/Music.ym" charset="US-ASCII" />
+    <file url="file://$PROJECT_DIR$/Examples/Programs/ASCII_Table.txt" charset="US-ASCII" />
+    <file url="file://$PROJECT_DIR$/Examples/Programs/Music/YM_006A.BIN" charset="US-ASCII" />
     <file url="file://$PROJECT_DIR$/Examples/ymConverter/YM_006A.ym" charset="UTF-16" />
     <file url="file://$PROJECT_DIR$/program.bin" charset="windows-1252" />
+    <file url="file://$PROJECT_DIR$/src/Tools/ymToSng/Music.ym" charset="UTF-8" />
     <file url="file://X:/TEMP/Rar$DIa34904.18805/Special Forces Intro.ym" charset="US-ASCII" />
   </component>
 </project>
