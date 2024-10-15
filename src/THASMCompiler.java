@@ -39,6 +39,9 @@ class Compiler {
     public int size = 0;
     public int currentAddress = 0;
     public byte[] PROGRAM = new byte[MaxProgramAddresses];
+    public byte[] dataTables = new byte[MaxProgramAddresses];
+    public ArrayList<Integer> dataTableSizes = new ArrayList<Integer>();
+    public int currentDataTableAddress = -1;
     public int stack = 0;
     public String TemplateFile;
     JTextArea textArea;
@@ -121,6 +124,7 @@ class Compiler {
 
         boolean multilineComment = false;
         boolean insideFunction = false;
+        boolean insideData = false;
         String insideFunctionName = "";
 
         while ((line = bufferedReader.readLine()) != null) {
@@ -144,11 +148,40 @@ class Compiler {
 
                 linearguments = Arrays.stream(line.split(" ")).collect(Collectors.toCollection(ArrayList::new));
             }
-            if (linearguments.isEmpty()) continue;
+            ArrayList<String> lineArgumentsFiltered = new ArrayList<String>();
+            for (String arguments : linearguments) {
+                if (!arguments.isEmpty()) {
+                    lineArgumentsFiltered.add(arguments);
+                }
+            }
+            if (lineArgumentsFiltered.isEmpty()) continue;
+            linearguments = lineArgumentsFiltered;
+
 
             // ####### IMPLEMENTING BASE FUNCTIONALITY #######
+            if (insideData && !Objects.equals(linearguments.get(0).toLowerCase(), "data")) {
+                if (linearguments.size() != 1) throw new Exception(parse1ErrorDefault(linecount,line) + " Content of a data table has be declared as follows: <data>,<data>,<data>...");
+                String dataString = linearguments.get(0).toLowerCase();
+                String[] dataArray = dataString.split(",");
+                for (String data : dataArray) {
 
-            if (Objects.equals(linearguments.get(0).toLowerCase(), "byte")) {
+                    Object[] variable = new Object[2];
+                    byte radix = 10;
+                    if (data.startsWith("0x")) radix = 16;
+                    if (data.startsWith("0b")) radix = 2;
+                    if (radix != 10) {
+                        data = data.substring(2);
+                    }
+                    int dataContent = Integer.parseInt(data, radix);
+                    if (dataContent > 256 || dataContent < 0) {
+                        throw new Exception(parse1ErrorDefault(linecount, line) + " Data can't be greater than 256 (0xff) or less than 0 (0x00)! Current data:" + data + " -> " + currentAddress);
+                    }
+                    dataTables[currentDataTableAddress] = (byte)dataContent;
+
+                    currentDataTableAddress++;
+                }
+
+            } else if (Objects.equals(linearguments.get(0).toLowerCase(), "byte")) {
                 if (linearguments.size() != 4 && linearguments.size() != 5) throw new Exception(parse1ErrorDefault(linecount,line) + " A variable has to be declared with 4 or 5 arguments: Type, (Pointer), Name, =, Value");
 
                 boolean customAdrress = false;
@@ -238,22 +271,60 @@ class Compiler {
                 if (stack > 255)
                     throw new Exception(parse1ErrorDefault(linecount, line) + " stack size cant be more than 256!");
             }else if (linearguments.get(0).startsWith("$")) {
-                if (linearguments.size() != 1) throw new Exception(parse1ErrorDefault(linecount,line) + " A section has to be declared with 1 argument: $(Name)");
-                if (Variables.get(linearguments.get(0)) != null) throw new Exception(parse1ErrorDefault(linecount,line) + " The variable/section name: \"" + linearguments.get(1) + "\" is already declared!");
-                if (!insideFunction) throw new Exception(parse1ErrorDefault(linecount,line) + " Outside function!");
+                if (linearguments.size() != 1)
+                    throw new Exception(parse1ErrorDefault(linecount, line) + " A section has to be declared with 1 argument: $(Name)");
+                if (Variables.get(linearguments.get(0)) != null)
+                    throw new Exception(parse1ErrorDefault(linecount, line) + " The variable/section name: \"" + linearguments.get(1) + "\" is already declared!");
+                if (!insideFunction) throw new Exception(parse1ErrorDefault(linecount, line) + " Outside function!");
 
                 Object[] variable = new Object[2];
                 variable[0] = 0;
                 variable[1] = -2;
-                Variables.put(linearguments.get(0),variable);
+                Variables.put(linearguments.get(0), variable);
                 VariablesOrder.add(linearguments.get(0));
                 Object[] function = Functions.get(insideFunctionName);
-                ArrayList<String> functionContainedInstructions = (ArrayList<String>)function[1];
+                ArrayList<String> functionContainedInstructions = (ArrayList<String>) function[1];
 
                 functionContainedInstructions.add(line);
                 function[0] = -1;
                 function[1] = functionContainedInstructions;
-                Functions.put(insideFunctionName,function);
+                Functions.put(insideFunctionName, function);
+            } else if (Objects.equals(linearguments.get(0).toLowerCase(), "data")) {
+                if (linearguments.size() != 2) throw new Exception(parse1ErrorDefault(linecount,line) + " A data table has to be declared with 1 arguments: data *<Pointer>");
+                if (Objects.equals(linearguments.get(1), "end")) {
+                    dataTableSizes.add(currentDataTableAddress);
+                    insideData=false;
+                } else {
+
+
+                    String pointer = linearguments.get(1);
+                    int pointerLocation = -1;
+
+                    if (!pointer.startsWith("*"))
+                        throw new Exception(parse1ErrorDefault(linecount, line) + " A data table location has to start with '*', directly followed by the 16 bit value!");
+                    pointer = pointer.substring(1);
+
+                    if (Functions.get(pointer) != null) pointerLocation = (int) Functions.get(pointer)[0];
+                    else if (Variables.get(pointer) != null) pointerLocation = (int) Variables.get(pointer)[0];
+                    else if (Pointers.get(pointer) != null) pointerLocation = (int) Pointers.get(pointer)[0];
+                    else {
+                        linearguments.remove(1);
+
+                        Object[] variable = new Object[2];
+                        byte radix = 10;
+                        if (pointer.startsWith("0x")) radix = 16;
+                        if (pointer.startsWith("0b")) radix = 2;
+                        if (radix != 10) {
+                            pointer = pointer.substring(2);
+                        }
+                        pointerLocation = Integer.parseInt(pointer, radix);
+                        if (pointerLocation > 65535 || pointerLocation < 0)
+                            throw new Exception(parse1ErrorDefault(linecount, line) + " A pointer can't be greater than 65535 (0xffff) or less than 0 (0x0000)! Current pointer:" + pointer + " -> " + pointerLocation);
+                    }
+                    currentDataTableAddress = pointerLocation;
+                    dataTableSizes.add(pointerLocation);
+                    insideData = true;
+                }
             } else if (Objects.equals(linearguments.get(0).toLowerCase(), "pointer")) {
                 if (linearguments.size() != 4) throw new Exception(parse1ErrorDefault(linecount,line) + " A pointer has to be declared with 4 arguments: 'pointer', Name, =, Location");
                 if (!linearguments.get(1).startsWith("@")) throw new Exception(parse1ErrorDefault(linecount,line) + " A assignment or call of a pointer always has to begin with the '@' symbol");
@@ -326,6 +397,12 @@ class Compiler {
             }
             myReader.close();
         }
+        for (int i = 0; i < dataTableSizes.size()/2; i++) {
+           for (int dc = 0; dc < dataTableSizes.get(i*2+1) -dataTableSizes.get(i*2); dc++) {
+               PROGRAM[dataTableSizes.get(i*2) + dc] = dataTables[dataTableSizes.get(i*2) + dc];
+           }
+        }
+
 
         PROGRAM[MinProgramAddresses+currentAddress+ReservedSpotsFront] = (byte) stack;
         currentAddress++;
@@ -594,6 +671,8 @@ class Compiler {
     public JTextArea finalizeCompile(String filelocation) throws Exception {
 //        int LoadBytes = TemplateFile==null?MaxProgramAddresses:MinProgramAddresses+currentAddress+ReservedSpotsFront;
         try {
+            filelocation = filelocation.replace("/"," ");
+            System.out.println(filelocation);
             FileWriter myWriter = new FileWriter(filelocation);
             int prevRow = 0;
             StringBuilder line = new StringBuilder();

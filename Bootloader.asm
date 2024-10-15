@@ -66,7 +66,7 @@ function overflowLow
 
     lda.boot * @LoadAddressHIGH
     cmp.ram * $EndAddressROM_HIGH
-    jmp * done
+    jme * done
 
     jmp * loop
 end
@@ -81,15 +81,20 @@ function done
 
     jmp * @CNULocation
 end
-
+pointer @TMS9918_WRITE_MODE = 0x8600
+pointer @TMS9918_WRITE = 0x8400
 function setup
+    lda.ram > 0b00000100
+    sta.ram * @TMS9918_WRITE_MODE
+    lda.ram > 0b11100001
+    sta.ram * @TMS9918_WRITE_MODE
+
     // ############## LOAD SIZE ##############
 
     lda.rom * @ROM_ProgramSize_LOW
     sta.boot * $EndAddressROM_LOW
 
     sta.ram * 1
-
 
     lda.rom * @ROM_ProgramSize_HIGH
     sta.boot * $EndAddressROM_HIGH
